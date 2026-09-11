@@ -1,87 +1,114 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-	
-  <PropertyGroup>
-    <!-- Select the framework(s) you wish to target.
-        Rhino 6: net45
-        Rhino 7: net48
-        Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
-        Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
-    -->
-    <TargetFrameworks>net7.0-windows;net7.0;net48</TargetFrameworks>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <TargetExt>.gha</TargetExt>
-    <NoWarn>NU1701;NETSDK1086</NoWarn>
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
-  </PropertyGroup>
-  
-  <PropertyGroup>
-    <!-- Specifies information for Assembly and Yak -->
-    <Version>1.0</Version>
-    <Title>GHShield</Title>
-    <Company>GHShield Authors</Company>
-    <Description>Description of GHShield</Description>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="Grasshopper" Version="7.0.20314.3001" Condition="$(TargetFramework) == 'net48'" ExcludeAssets="runtime" />
-    <PackageReference Include="Grasshopper" Version="8.0.23304.9001" Condition="!$(TargetFramework.StartsWith('net4'))" ExcludeAssets="runtime" />
-  </ItemGroup>
-  
-  <!-- For Windows only builds -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4'))">
-    <UseWindowsForms>true</UseWindowsForms>
-  </PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Reference WinForms for .NET 7.0 on macOS -->
-  <ItemGroup Condition="!($(TargetFramework.Contains('-windows')) or $(TargetFramework.StartsWith('net4')))">
-    <!-- Rhino 8.11 and later you can use this -->
-    <!-- <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" /> -->
-    
-    <!-- Rhino 8.10 and earlier -->
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" ExcludeAssets="all" GeneratePathProperty="true" />
-    <Reference Include="$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net48)\build\.NETFramework\v4.8\System.Windows.Forms.dll" Private="False" />
-    <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Components\" />
-    <Folder Include="Security\" />
-    <Folder Include="Resources\" />
-    <Folder Include="Serialization\" />
-    <Folder Include="UI\" />
-  </ItemGroup>
+	<!--
+	  ==========================================================
+	  GHShield - Grasshopper protection layer
+	  ==========================================================
+	  Target host : Rhino 7 / Grasshopper 7
+	  Runtime     : .NET Framework 4.8 (Rhino 7 has no .NET Core host)
+	  Output      : GHShield.gha  ->  bin\Debug\GHShield.gha
+	  ==========================================================
+	-->
 
-  <Target Name="CopyPdbForMonoDebugging" AfterTargets="AfterBuild">
-    <!-- Enable debugging in Rhino 6/7 on Mac -->
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFiles="$(TargetDir)$(TargetName).gha.pdb" Condition="$([MSBuild]::IsOSPlatform(OSX)) and $(TargetFramework.StartsWith('net4')) and Exists('$(TargetDir)$(TargetName).pdb')" />
-  </Target>
+	<PropertyGroup>
+		<!-- Rhino 7 runs on .NET Framework 4.8 ONLY. Do not multi-target. -->
+		<TargetFramework>net48</TargetFramework>
+		<LangVersion>latest</LangVersion>
 
-  <Target Name="BuildYakPackage" AfterTargets="DispatchToInnerBuilds">
-    <PropertyGroup>
-      <YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(windows)) and Exists('C:\Program Files\Rhino 8\System\Yak.exe')">C:\Program Files\Rhino 8\System\Yak.exe</YakExecutable>
-      <YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(macos)) and Exists('/Applications/Rhino 8.app/Contents/Resources/bin/yak')">/Applications/Rhino 8.app/Contents/Resources/bin/yak</YakExecutable>
-      
-      <BuildYakPackage Condition="$(BuildYakPackage) == '' and $(YakExecutable) != '' and Exists($(YakExecutable))">True</BuildYakPackage>
-    </PropertyGroup>
-    
-    <Warning Text="Could not find Yak executable" Condition="$(YakExecutable) == ''" />
+		<AssemblyName>GHShield</AssemblyName>
+		<RootNamespace>GHShield</RootNamespace>
 
-    <ItemGroup>
-      <YakPackagesToDelete Include="$(OutputPath)\*.yak;$(OutputPath)\**\manifest.yml" />
-    </ItemGroup>
-    
-    <Delete Files="@(YakPackagesToDelete)" />
+		<!-- Grasshopper loads .gha, not .dll -->
+		<TargetExt>.gha</TargetExt>
 
-    <Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
-    <Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
+		<!-- Flat output: bin\Debug\ instead of bin\Debug\net48\ -->
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
-    <!-- Rhino 7 -->
-    <Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)net48\" Condition="$(BuildYakPackage) == 'True'" />
-    <Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)net48\" Condition="$(BuildYakPackage) == 'True'" />
-    
-    <ItemGroup>
-      <YakPackageToMove Include="$(BaseOutputPath)$(Configuration)\net48\*.yak" />
-    </ItemGroup>
-    <Move SourceFiles="@(YakPackageToMove)" DestinationFolder="$(BaseOutputPath)$(Configuration)\" Condition="$(BuildYakPackage) == 'True'" />
-  </Target>
+		<!-- WinForms + System.Drawing: required by the Grasshopper canvas API -->
+		<UseWindowsForms>true</UseWindowsForms>
+
+		<!-- The Grasshopper NuGet package is built for .NET Framework;
+		     NU1701 fires on some transitive packages and is expected. -->
+		<NoWarn>NU1701</NoWarn>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- Assembly / Yak metadata -->
+		<Version>1.0.0</Version>
+		<Title>GHShield</Title>
+		<Company>ALVA</Company>
+		<Authors>Nipun</Authors>
+		<Description>Protection and access control for existing Grasshopper components.</Description>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<!-- 'full' PDBs attach most reliably when debugging into Rhino 7. -->
+		<DebugType>full</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Rhino 7 / Grasshopper reference assemblies.
+		     ExcludeAssets="runtime" keeps RhinoCommon.dll and Grasshopper.dll
+		     OUT of the output folder - Rhino supplies them at load time.
+		     Never ship them inside the .gha. -->
+		<PackageReference Include="Grasshopper"
+		                  Version="7.0.20314.3001"
+		                  ExcludeAssets="runtime" />
+
+		<!-- Harmony: runtime method interception.
+		     Grasshopper's removal methods are public but NOT virtual, and it
+		     raises no pre-delete event, so there is no supported way to veto a
+		     deletion. Harmony is how Rhino plugins solve exactly this.
+		     0Harmony.dll IS copied to the output folder and must ship with
+		     the .gha. -->
+		<PackageReference Include="Lib.Harmony" Version="2.2.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Icons are embedded in the .gha so it stays a single file.
+		     The Remove comes first: the SDK globs *.png into None by default,
+		     and the same file in two item groups trips a duplicate-item error
+		     on some SDK versions. -->
+		<None Remove="Resources\*.png" />
+		<EmbeddedResource Include="Resources\*.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Components\" />
+		<Folder Include="Resources\" />
+		<Folder Include="Security\" />
+		<Folder Include="Serialization\" />
+		<Folder Include="UI\" />
+	</ItemGroup>
+
+	<!--
+	  ==========================================================
+	  Yak packaging (opt-in, Release only)
+	  ==========================================================
+	  Run:  dotnet build -c Release -p:BuildYakPackage=true
+	  It is deliberately OFF during normal development so a
+	  missing Yak.exe can never fail a Debug build.
+	-->
+	<Target Name="BuildYakPackage"
+	        AfterTargets="Build"
+	        Condition="'$(Configuration)' == 'Release' and '$(BuildYakPackage)' == 'true'">
+
+		<PropertyGroup>
+			<YakExecutable Condition="'$(YakExecutable)' == '' and Exists('C:\Program Files\Rhino 7\System\Yak.exe')">C:\Program Files\Rhino 7\System\Yak.exe</YakExecutable>
+		</PropertyGroup>
+
+		<Error Text="Yak.exe not found. Pass -p:YakExecutable=&lt;path&gt;."
+		       Condition="'$(YakExecutable)' == ''" />
+
+		<ItemGroup>
+			<YakPackagesToDelete Include="$(OutputPath)*.yak;$(OutputPath)**\manifest.yml" />
+		</ItemGroup>
+
+		<Delete Files="@(YakPackagesToDelete)" />
+
+		<Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" />
+		<Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)" />
+	</Target>
 
 </Project>
