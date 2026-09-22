@@ -1,6 +1,6 @@
 # GHShield
 
-**Protection and access control for Grasshopper definitions.** Rhino 7.
+**Protection and access control for Grasshopper definitions.** Rhino 7 and Rhino 8.
 
 Freeze any object in a definition. It keeps solving and feeding everything
 downstream — but it can no longer be moved, deleted, copied or edited.
@@ -60,6 +60,10 @@ Freezing a group seals it as a unit: nothing inside can be moved, and the
 group cannot be ungrouped or have members added or removed while it is frozen -
 so its outline stays exactly as you left it.
 
+To have your name and contact shown in the report that travels with the file,
+use **GHShield menu → Set Protection Owner…**. It is optional; GHShield never
+asks while you are freezing.
+
 The first time you freeze something, GHShield adds a small component to your
 definition. That component carries the protection list into the saved file —
 without it, protection would not survive closing Rhino. Do not delete it; it
@@ -73,11 +77,15 @@ recover a file.
 Rhino's Package Manager: run `_PackageManager`, search for **GHShield**,
 install, restart Rhino.
 
-Manual: copy `GHShield.gha` **and `0Harmony.dll`** into
-`%APPDATA%\Grasshopper\Libraries`, then right-click both files, Properties,
-and tick **Unblock**. Restart Rhino.
+Manual: unzip and copy `GHShield.gha` **and the `harmony` folder** into
+`%APPDATA%\Grasshopper\Libraries`, so that `Libraries\harmony\net48\` and
+`Libraries\harmony\net8.0\` exist. Right-click the zip before unzipping,
+Properties, and tick **Unblock**. Restart Rhino.
 
-Both files are required. The `.gha` on its own will not load.
+The `harmony` folder is required: it holds one build of the Harmony library
+for Rhino 7 (.NET Framework) and one for Rhino 8 (.NET 8), and GHShield loads
+the one that matches. Without it, freezing still works but deleting a frozen
+object is undone instead of refused, and the right-click items are missing.
 
 ## What this is and is not
 
@@ -92,9 +100,10 @@ Grasshopper's password-protected clusters — the two work well together.
 
 ## Requirements
 
-- Rhino 7 (Windows)
-- .NET Framework 4.8
+- Rhino 7 or Rhino 8, Windows
+- Rhino 8 on either runtime (.NET 8 or .NET Framework)
 
 ## Licence
 
-MIT
+MIT. Includes [Harmony](https://github.com/pardeike/Harmony) by Andreas
+Pardeike, also MIT.

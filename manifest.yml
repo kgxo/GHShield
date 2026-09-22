@@ -4,22 +4,25 @@ version: 1.1.0
 authors:
   - Nipun Kumar Goswami (ALVA)
 description: >
-  Protection and access control for Grasshopper definitions.
+  Freeze parts of a Grasshopper definition so nobody can move, delete, copy
+  or edit them - while they keep solving and feeding everything downstream.
+
+  Made for handing a definition to a client, consultant or fabricator: they
+  run it and change the inputs you left open, and your logic stays exactly
+  as you built it. Protection is saved in the .gh file.
+
+  How to use: right-click any component and choose "Freeze with GHShield".
+  Right-click a group to freeze the whole group. Right-click empty canvas to
+  freeze or unfreeze a selection. Ctrl+Shift+F toggles the selection. Frozen
+  objects show a frost wash and a padlock.
+
+  Works on standard Grasshopper components and on components from other
+  plugins - nothing needs replacing.
 
   Rhino 7 and Rhino 8, Windows.
 
-  Freeze any object in a definition and it keeps solving and feeding
-  everything downstream, but can no longer be moved, deleted, copied or
-  edited. Protection is saved into the .gh file, so a definition stays
-  locked when you send it to a client, a consultant or a fabricator.
-
-  Works on the standard Grasshopper components you already use - nothing
-  needs replacing. Protection adapters are generated at runtime, so
-  third-party components are covered too.
-
-  GHShield is not encryption. Anyone with GHShield installed can unfreeze,
-  and the logic remains readable as ordinary components. It prevents
-  accidents and casual meddling, not a determined person.
+  Note: this is protection, not encryption. Anyone with GHShield installed
+  can unfreeze. It stops accidents and casual edits, not a determined person.
 
 url: https://github.com/kgxo/GHShield
 icon: ShieldIcon48.png
