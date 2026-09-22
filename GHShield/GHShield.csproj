@@ -34,7 +34,7 @@
 
 	<PropertyGroup>
 		<!-- Assembly / Yak metadata -->
-		<Version>1.0.0</Version>
+		<Version>1.1.0</Version>
 		<Title>GHShield</Title>
 		<Company>ALVA</Company>
 		<Authors>Nipun</Authors>
@@ -60,7 +60,7 @@
 		     deletion. Harmony is how Rhino plugins solve exactly this.
 		     0Harmony.dll IS copied to the output folder and must ship with
 		     the .gha. -->
-		<PackageReference Include="Lib.Harmony" Version="2.2.2" />
+		<PackageReference Include="Lib.Harmony" Version="2.4.2" />
 	</ItemGroup>
 
 	<ItemGroup>

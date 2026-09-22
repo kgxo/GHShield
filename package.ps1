@@ -59,7 +59,6 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 # guard cannot install, so deletions get reverted instead of refused.
 $required = @(
     @{ From = Join-Path $bin "GHShield.gha";                     Name = "GHShield.gha" },
-    @{ From = Join-Path $bin "0Harmony.dll";                     Name = "0Harmony.dll" },
     @{ From = Join-Path $root "GHShield\Resources\ShieldIcon48.png"; Name = "ShieldIcon48.png" },
     @{ From = Join-Path $root "manifest.yml";                    Name = "manifest.yml" },
     @{ From = Join-Path $root "README.md";                       Name = "README.md" },
@@ -70,6 +69,30 @@ foreach ($f in $required) {
     if (-not (Test-Path $f.From)) { Fail "Missing required file: $($f.From)" }
     Copy-Item $f.From (Join-Path $stage $f.Name) -Force
     Ok $f.Name
+}
+
+# Harmony: one build per .NET runtime, in harmony\<runtime>\ - NOT beside the
+# .gha. Rhino 7 runs .NET Framework (net48); Rhino 8 normally runs modern .NET
+# (net8.0, or net6.0 on older .NET 7 builds). The net48 build on Rhino 8 fails with "Method not
+# found: ILGenerator.MarkSequencePoint" and no patch installs. Startup.cs picks
+# the right folder at load time.
+$harmonyVersion = "2.4.2"
+$harmonyLib = Join-Path $env:USERPROFILE ".nuget\packages\lib.harmony\$harmonyVersion\lib"
+if (-not (Test-Path $harmonyLib)) {
+    Fail "Harmony $harmonyVersion not found at $harmonyLib. Build once in Visual Studio so NuGet downloads it."
+}
+# net48 (Rhino 7) and net8.0 (current Rhino 8) are required. net6.0 covers
+# older Rhino 8 service releases that still run on .NET 7.
+foreach ($tfm in @("net48", "net8.0", "net6.0")) {
+    $src = Join-Path $harmonyLib "$tfm\0Harmony.dll"
+    if (-not (Test-Path $src)) {
+        if ($tfm -eq "net6.0") { Write-Host "    skip harmony\net6.0 (not in this Harmony package)" -ForegroundColor DarkYellow; continue }
+        Fail "Missing Harmony build: $src"
+    }
+    $dst = Join-Path $stage "harmony\$tfm"
+    New-Item -ItemType Directory -Path $dst -Force | Out-Null
+    Copy-Item $src (Join-Path $dst "0Harmony.dll") -Force
+    Ok "harmony\$tfm\0Harmony.dll"
 }
 
 # RhinoCommon and Grasshopper must never be shipped inside a package.

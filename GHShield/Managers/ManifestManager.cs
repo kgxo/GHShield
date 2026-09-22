@@ -54,11 +54,10 @@ namespace GHShield.Managers
 
                 if (manifest != null)
                 {
-                    // First stamp on this machine: ask who is protecting this,
-                    // rather than silently writing the Windows account name
-                    // into a file that is about to be sent to a client.
-                    if (string.IsNullOrWhiteSpace(manifest.LockedBy))
-                        GHShield.UI.OwnerPrompt.EnsureConfigured();
+                    // No prompt. Freezing should never be interrupted by a
+                    // form. A name and contact are optional and set from
+                    // GHShield menu > Set Protection Owner...; until then the
+                    // stamp simply carries no name.
 
                     // Records who locked it and when, once. Never overwritten,
                     // so a file keeps its original author even if someone else

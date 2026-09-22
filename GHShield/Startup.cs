@@ -79,7 +79,11 @@ namespace GHShield
                     string path = Path.Combine(folder, "0Harmony.dll");
 
                     if (File.Exists(path))
+                    {
+                        Log.Debug($"using Harmony from {path}");
+
                         return Assembly.LoadFrom(path);
+                    }
                 }
             }
             catch
@@ -91,6 +95,18 @@ namespace GHShield
             return null;
         }
 
+        /// <summary>
+        /// Where 0Harmony.dll may be, in the order to try.
+        ///
+        /// Harmony ships a different build for each .NET runtime, and the
+        /// wrong one fails in a way that looks unrelated: the .NET Framework
+        /// build on Rhino 8's modern .NET dies with "Method not found:
+        /// ILGenerator.MarkSequencePoint", and every patch - delete guard and
+        /// right-click menus alike - silently fails to install. So the package
+        /// carries one build per runtime under harmony\<runtime>\, none of
+        /// them beside the .gha (where the runtime would pick one up by itself,
+        /// right or wrong), and this method points at the matching one.
+        /// </summary>
         private static string[] CandidateFolders()
         {
             string beside = null;
@@ -112,12 +128,78 @@ namespace GHShield
             string appData = Environment.GetFolderPath(
                 Environment.SpecialFolder.ApplicationData);
 
-            return new[]
+            string[] roots =
             {
                 beside,
-                Path.Combine(appData, @"Grasshopper\Libraries"),
-                Path.Combine(appData, @"McNeel\Rhinoceros\packages\7.0\ghshield")
+                Path.Combine(appData, @"McNeel\Rhinoceros\packages\8.0\ghshield"),
+                Path.Combine(appData, @"McNeel\Rhinoceros\packages\7.0\ghshield"),
+                Path.Combine(appData, @"Grasshopper\Libraries")
             };
+
+            bool framework = IsNetFramework();
+
+            string[] builds = framework
+                ? new[] { "net48" }
+                : Environment.Version.Major >= 8
+                    ? new[] { "net8.0", "net6.0" }
+                    : new[] { "net6.0", "net8.0" };
+
+            System.Collections.Generic.List<string> folders =
+                new System.Collections.Generic.List<string>();
+
+            foreach (string root in roots)
+            {
+                if (string.IsNullOrEmpty(root))
+                    continue;
+
+                // Installed packages may sit in a version subfolder
+                // (packages\8.0\ghshield\1.1.0\), so look one level down too.
+                System.Collections.Generic.List<string> bases =
+                    new System.Collections.Generic.List<string> { root };
+
+                try
+                {
+                    if (Directory.Exists(root) && root != beside &&
+                        !root.EndsWith("Libraries", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string[] sub = Directory.GetDirectories(root);
+                        Array.Sort(sub);
+                        Array.Reverse(sub); // newest version first
+                        bases.AddRange(sub);
+                    }
+                }
+                catch
+                {
+                    // Ignored.
+                }
+
+                foreach (string b in bases)
+                    foreach (string build in builds)
+                        folders.Add(Path.Combine(b, "harmony", build));
+
+                // A loose 0Harmony.dll (a debug build, a hand install in
+                // Libraries) is only ever the .NET Framework build, so it is
+                // only trusted on .NET Framework.
+                if (framework)
+                    folders.Add(root);
+            }
+
+            return folders.ToArray();
+        }
+
+        private static bool IsNetFramework()
+        {
+            try
+            {
+                string runtime = System.Runtime.InteropServices
+                    .RuntimeInformation.FrameworkDescription ?? string.Empty;
+
+                return runtime.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         // =====================================================
@@ -126,6 +208,21 @@ namespace GHShield
 
         public override GH_LoadingInstruction PriorityLoad()
         {
+            // Rhino 7, and Rhino 8 on either of its runtimes.
+            //
+            // 1.0.0 crashed Rhino 8 as Grasshopper opened; 1.0.1 switched
+            // itself off there. From 1.1, Harmony 2.4 (which supports modern
+            // .NET) and a runtime-neutral way of emitting the protection
+            // adapters let the same build run on both. Anything else - a
+            // future Rhino 9 - is still refused until it has been tested.
+            if (!IsSupportedRhino())
+            {
+                Log.Info("this version supports Rhino 7 and 8 only and has switched " +
+                         "itself off. Nothing in your files is affected.");
+
+                return GH_LoadingInstruction.Proceed;
+            }
+
             // Each step is a lambda rather than a method group on purpose.
             // A method group has to be resolved when THIS method is compiled,
             // before the first line runs - so a missing dependency would
@@ -137,6 +234,24 @@ namespace GHShield
             Step("menu", () => GHShieldMenu.Install());
 
             return GH_LoadingInstruction.Proceed;
+        }
+
+        /// <summary>
+        /// True on the Rhino versions GHShield has been tested on: 7 and 8.
+        /// </summary>
+        private static bool IsSupportedRhino()
+        {
+            try
+            {
+                int major = Rhino.RhinoApp.ExeVersion;
+
+                return major == 7 || major == 8;
+            }
+            catch
+            {
+                // If we cannot even tell where we are, do nothing risky.
+                return false;
+            }
         }
 
         private static void Step(string what, Action action)

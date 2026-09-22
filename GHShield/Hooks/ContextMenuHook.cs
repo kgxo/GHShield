@@ -74,26 +74,49 @@ namespace GHShield.Hooks
                     typeof(GH_Group)
                 };
 
+                // Resolve the implementation each type actually USES, not only
+                // one it declares itself. On Rhino 8 the group item never
+                // appeared, most likely because GH_Group there no longer
+                // declares its own AppendMenuItems, so a declared-only lookup
+                // found nothing. Walking up to the inherited implementation
+                // works either way; the set below stops the same method being
+                // patched twice.
+                System.Collections.Generic.HashSet<MethodInfo> done =
+                    new System.Collections.Generic.HashSet<MethodInfo>();
+
+                System.Collections.Generic.List<string> hooked =
+                    new System.Collections.Generic.List<string>();
+
                 foreach (Type target in targets)
                 {
                     MethodInfo method = target.GetMethod(
                         "AppendMenuItems",
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly,
+                        BindingFlags.Instance | BindingFlags.Public,
                         null,
                         new[] { typeof(ToolStripDropDown) },
                         null);
 
                     if (method == null)
+                    {
+                        Log.Info($"right-click menu: no AppendMenuItems on {target.Name} in this Grasshopper.");
+                        continue;
+                    }
+
+                    if (!done.Add(method))
                         continue;
 
                     try
                     {
                         harmony.Patch(method, null, new HarmonyMethod(postfix));
                         patched++;
+                        hooked.Add($"{target.Name}->{method.DeclaringType?.Name}");
                     }
                     catch (Exception ex)
                     {
-                        Log.Debug($"Could not patch {target.Name}.AppendMenuItems: {ex.Message}");
+                        // Info, not Debug: a missing right-click item is the
+                        // first thing a user notices, and this line is the
+                        // only clue to why.
+                        Log.Info($"right-click menu: could not patch {method.DeclaringType?.Name}.AppendMenuItems: {ex.Message}");
                     }
                 }
 
@@ -130,7 +153,9 @@ namespace GHShield.Hooks
 
                 _installed = patched > 0;
 
-                Log.Debug($"Context menu patched on {patched} type(s).");
+                // TEMPORARY (1.1 testing): printed at Info so the Rhino 8 test
+                // shows exactly which menu builders were hooked.
+                Log.Info($"right-click menu: hooked {string.Join(", ", hooked)}; canvas menu {(patched > hooked.Count ? "yes" : "no")}.");
             }
             catch (Exception ex)
             {
@@ -194,6 +219,11 @@ namespace GHShield.Hooks
             try
             {
                 IGH_DocumentObject obj = __instance as IGH_DocumentObject;
+
+                // TEMPORARY (1.1 testing): proves whether a group's menu
+                // reaches GHShield at all on Rhino 8.
+                if (obj is GH_Group)
+                    Log.Info($"right-click menu: group menu reached GHShield ({Members((GH_Group)obj)} members).");
 
                 if (obj == null || menu == null)
                     return;

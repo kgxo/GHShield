@@ -302,7 +302,12 @@ namespace GHShield.Core
 
             AssemblyName name = new AssemblyName("GHShield.GeneratedProxies");
 
-            AssemblyBuilder assembly = AppDomain.CurrentDomain.DefineDynamicAssembly(
+            // AssemblyBuilder.DefineDynamicAssembly rather than the AppDomain
+            // method of the same name: the AppDomain one does not exist on the
+            // .NET that Rhino 8 runs on, so every freeze there would fail with
+            // MissingMethodException. The static one exists on both .NET
+            // Framework 4.5+ (Rhino 7) and modern .NET (Rhino 8).
+            AssemblyBuilder assembly = AssemblyBuilder.DefineDynamicAssembly(
                 name,
                 AssemblyBuilderAccess.Run);
 

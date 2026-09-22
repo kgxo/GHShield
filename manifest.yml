@@ -1,10 +1,12 @@
 ---
 name: ghshield
-version: 1.0.0
+version: 1.1.0
 authors:
   - Nipun Kumar Goswami (ALVA)
 description: >
   Protection and access control for Grasshopper definitions.
+
+  Rhino 7 and Rhino 8, Windows.
 
   Freeze any object in a definition and it keeps solving and feeding
   everything downstream, but can no longer be moved, deleted, copied or
