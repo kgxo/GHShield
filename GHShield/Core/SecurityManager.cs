@@ -443,6 +443,16 @@ namespace GHShield.Core
             // Pool, which cannot be referenced at compile time. A no-op if a
             // hand-written adapter is already in place.
             AttributeProxyFactory.Protect(obj);
+
+            // The generated proxy covers almost everything. For the handful of
+            // attributes classes it cannot subclass - sealed, generic, or
+            // without a usable constructor - fall back to the hand-written
+            // adapter for that type, if GHShield has one.
+            //
+            // This runs at FREEZE time and never before it. An object nobody
+            // froze keeps the attributes Grasshopper gave it.
+            if (!(obj.Attributes is IGHShieldAttributes))
+                GHShield.Hooks.AdapterHook.InstallAdapter(obj);
         }
 
         private static void Detach(IGH_DocumentObject obj)

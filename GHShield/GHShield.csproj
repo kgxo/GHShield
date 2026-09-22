@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<!--
 	  ==========================================================
@@ -52,9 +52,7 @@
 		     ExcludeAssets="runtime" keeps RhinoCommon.dll and Grasshopper.dll
 		     OUT of the output folder - Rhino supplies them at load time.
 		     Never ship them inside the .gha. -->
-		<PackageReference Include="Grasshopper"
-		                  Version="7.0.20314.3001"
-		                  ExcludeAssets="runtime" />
+		<PackageReference Include="Grasshopper" Version="7.0.20314.3001" ExcludeAssets="runtime" />
 
 		<!-- Harmony: runtime method interception.
 		     Grasshopper's removal methods are public but NOT virtual, and it
@@ -70,15 +68,19 @@
 		     The Remove comes first: the SDK globs *.png into None by default,
 		     and the same file in two item groups trips a duplicate-item error
 		     on some SDK versions. -->
+		<Compile Remove="Security\**" />
+		<Compile Remove="Serialization\**" />
+		<EmbeddedResource Remove="Security\**" />
+		<EmbeddedResource Remove="Serialization\**" />
 		<None Remove="Resources\*.png" />
+		<None Remove="Security\**" />
+		<None Remove="Serialization\**" />
 		<EmbeddedResource Include="Resources\*.png" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Folder Include="Components\" />
 		<Folder Include="Resources\" />
-		<Folder Include="Security\" />
-		<Folder Include="Serialization\" />
 		<Folder Include="UI\" />
 	</ItemGroup>
 
@@ -90,16 +92,13 @@
 	  It is deliberately OFF during normal development so a
 	  missing Yak.exe can never fail a Debug build.
 	-->
-	<Target Name="BuildYakPackage"
-	        AfterTargets="Build"
-	        Condition="'$(Configuration)' == 'Release' and '$(BuildYakPackage)' == 'true'">
+	<Target Name="BuildYakPackage" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and '$(BuildYakPackage)' == 'true'">
 
 		<PropertyGroup>
 			<YakExecutable Condition="'$(YakExecutable)' == '' and Exists('C:\Program Files\Rhino 7\System\Yak.exe')">C:\Program Files\Rhino 7\System\Yak.exe</YakExecutable>
 		</PropertyGroup>
 
-		<Error Text="Yak.exe not found. Pass -p:YakExecutable=&lt;path&gt;."
-		       Condition="'$(YakExecutable)' == ''" />
+		<Error Text="Yak.exe not found. Pass -p:YakExecutable=&lt;path&gt;." Condition="'$(YakExecutable)' == ''" />
 
 		<ItemGroup>
 			<YakPackagesToDelete Include="$(OutputPath)*.yak;$(OutputPath)**\manifest.yml" />

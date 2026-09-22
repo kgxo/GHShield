@@ -66,16 +66,34 @@ namespace GHShield.Hooks
             // Objects arriving here may be rebuilt instances from an undo, a
             // redo or a file load. They keep their InstanceGuid, so any
             // protection recorded against that Guid must be re-applied.
+            //
+            // NOTHING ELSE HAPPENS TO AN UNFROZEN OBJECT.
+            //
+            // Earlier versions installed a protection adapter on every
+            // eligible object in every document, frozen or not, on the theory
+            // that an inert adapter costs nothing. It is not inert: swapping
+            // an object's attributes replaces the instance that owns its
+            // bounds, and a Panel whose attributes were replaced could end up
+            // drawn in one place and clickable in another - so panels became
+            // intermittently impossible to select or move, in documents where
+            // GHShield had never been used at all.
+            //
+            // Protection is now attached only when something is actually
+            // frozen. A definition nobody has protected is untouched by this
+            // plugin.
             SecurityManager.ReattachIfFrozen(obj);
-
-            InstallAdapter(obj);
         }
 
         // =====================================================
         // ADAPTER SELECTION
         // =====================================================
 
-        private static void InstallAdapter(IGH_DocumentObject obj)
+        /// <summary>
+        /// Installs a hand-written protection adapter for one of the types
+        /// below. Called only from SecurityManager, and only when the runtime
+        /// proxy could not be generated for that object's attributes class.
+        /// </summary>
+        public static void InstallAdapter(IGH_DocumentObject obj)
         {
             // Already carrying one of ours.
             if (obj.Attributes is IGHShieldAttributes)
